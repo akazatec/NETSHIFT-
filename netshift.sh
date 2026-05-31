@@ -1,165 +1,36 @@
 #!/bin/bash
-
-## NetShift - IP Changer Tool
-## Made by akazatec
-
-BASE_DIR=$(realpath "$(dirname "$BASH_SOURCE")")
-
-if [ -t 1 ]; then
-    ncolors=$(tput colors 2>/dev/null)
-    if [ -n "$ncolors" ] && [ $ncolors -ge 8 ]; then
-        NC='\033[0m'
-        CYAN='\033[38;5;51m'
-        GREEN='\033[38;5;46m'
-        PINK='\033[38;5;198m'
-        YELLOW='\033[38;5;226m'
-        ORANGE='\033[38;5;208m'
-        PURPLE='\033[38;5;165m'
-        BOLD='\033[1m'
-        DIM='\033[2m'
-        FLASH='\033[5m'
-        BG_BLACK='\033[40m'
-    else
-        NC='' CYAN='' GREEN='' PINK='' YELLOW=''
-        ORANGE='' PURPLE='' BOLD='' DIM='' FLASH='' BG_BLACK=''
-    fi
-else
-    NC='' CYAN='' GREEN='' PINK='' YELLOW=''
-    ORANGE='' PURPLE='' BOLD='' DIM='' FLASH='' BG_BLACK=''
-fi
-
-__version__=1.0
-
-banner() {
-    clear
-    echo -e "${CYAN}${BOLD}"
-    echo "  ███╗   ██╗███████╗████████╗███████╗██╗  ██╗██╗███████╗████████╗"
-    echo "  ████╗  ██║██╔════╝╚══██╔══╝██╔════╝██║  ██║██║██╔════╝╚══██╔══╝"
-    echo "  ██╔██╗ ██║█████╗     ██║   ███████╗███████║██║█████╗     ██║   "
-    echo "  ██║╚██╗██║██╔══╝     ██║   ╚════██║██╔══██║██║██╔══╝     ██║   "
-    echo "  ██║ ╚████║███████╗   ██║   ███████║██║  ██║██║██║        ██║   "
-    echo "  ╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝╚═╝        ╚═╝  "
-    echo -e "${NC}"
-    echo -e "${YELLOW}${BOLD}        ⚡ LOCAL IP MODIFIER TOOL ⚡${NC}"
-    echo -e "${GREEN}${BOLD}              [ VERSION ${__version__} ]${NC}"
-    echo -e "${PURPLE}              [ Made by akazatec ]${NC}\n"
-}
-
-loading_bar() {
-    local msg=$1
-    echo -e "\n${CYAN}[>] ${BOLD}${msg}${NC}"
-    for i in {1..20}; do
-        bars=$(printf "%${i}s" | tr ' ' '█')
-        spaces=$(printf "%$((20-i))s" | tr ' ' '░')
-        perc=$((i * 5))
-        echo -ne "\r${PURPLE}[${GREEN}${bars}${CYAN}${spaces}${PURPLE}] ${YELLOW}${perc}%${NC}"
-        sleep 0.05
-    done
-    echo -e "\n${GREEN}${BOLD}[✓] DONE${NC}\n"
-}
-
-check_dependencies() {
-    clear && banner
-    echo -e "${CYAN}[*] Checking dependencies...${NC}"
-    if ! command -v ifconfig > /dev/null; then
-        echo -e "${PINK}[!] ${BOLD}net-tools not found. Installing...${NC}"
-        if [[ $(uname -o) == "Android" ]]; then
-            pkg install net-tools -y
-        elif command -v apt-get > /dev/null; then
-            sudo apt-get install net-tools -y
-        fi
-    fi
-    echo -e "${GREEN}[✓] ${BOLD}All dependencies satisfied!${NC}"
-    sleep 1
-}
-
-check_network() {
-    banner
-    loading_bar "CHECKING NETWORK CONNECTION"
-    timeout 3s curl -fIs "https://github.com" > /dev/null
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}[+] ${BOLD}NETWORK: CONNECTED${NC}"
-    else
-        echo -e "${PINK}[!] ${BOLD}NETWORK: OFFLINE MODE${NC}"
-    fi
-    sleep 1
-}
-
-main_menu() {
-    banner
-    echo -e "${PURPLE}╔══════════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║  ${CYAN}${BOLD}TOOL   : ${GREEN}NetShift IP Changer${NC}${PURPLE}           ║${NC}"
-    echo -e "${PURPLE}║  ${CYAN}${BOLD}AUTHOR : ${GREEN}akazatec${NC}${PURPLE}                      ║${NC}"
-    echo -e "${PURPLE}║  ${PINK}${BOLD}[ FOR EDUCATIONAL PURPOSES ONLY ]${NC}${PURPLE}       ║${NC}"
-    echo -e "${PURPLE}╚══════════════════════════════════════════════╝${NC}\n"
-
-    store=""
-
-    echo -e "${YELLOW}${BOLD}[>] SCANNING NETWORK INTERFACES...${NC}\n"
-    sleep 0.5
-
-    check_iface() {
-        iface=$1
-        echo -ne "${CYAN}[*] Checking ${iface}...${NC}"
-        ifconfig "$iface" > /dev/null 2>&1
-        if [ $? -eq 0 ]; then
-            ip_addr=$(ifconfig "$iface" | awk '/inet / {print $2}')
-            if [ -n "$ip_addr" ]; then
-                echo -e "\r${GREEN}[✓] ${BOLD}${iface^^} → ${YELLOW}${ip_addr}${NC}        "
-                store="$iface"
-            else
-                echo -e "\r${ORANGE}[!] ${iface} — No IPv4 assigned${NC}        "
-            fi
-        else
-            echo -e "\r${DIM}[×] ${iface} not available${NC}        "
-        fi
-    }
-
-    check_iface "wlan0"
-    sleep 0.2
-    check_iface "eth0"
-    sleep 0.2
-    check_iface "wlo1"
-    sleep 0.2
-    check_iface "usb0"
-    sleep 0.2
-
-    if [ -z "$store" ]; then
-        echo -e "\n${PINK}${BOLD}[!] NO ACTIVE INTERFACE FOUND. EXITING...${NC}"
-        exit 1
-    fi
-
-    echo -e "\n${CYAN}${BOLD}[🌐] ACTIVE INTERFACE: ${GREEN}${store}${NC}\n"
-    echo -e "${PURPLE}┌──[${GREEN}akazatec${CYAN}㉿${GREEN}NetShift${PURPLE}]-[${PINK}~${PURPLE}]${NC}"
-    echo -ne "${PURPLE}└─${GREEN}\$ ${NC}"
-    read -r new_ip
-
-    if [[ ! $new_ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        echo -e "${PINK}[!] ${BOLD}INVALID IP FORMAT! Example: 192.168.1.100${NC}"
-        sleep 2
-        main_menu
-        return
-    fi
-
-    loading_bar "APPLYING IP CHANGE"
-    sudo ifconfig $store $new_ip
-
-    echo -e "${GREEN}${BOLD}[✓] IP SUCCESSFULLY CHANGED!${NC}\n"
-    echo -e "${PURPLE}╔══════════════════════════════════════════════════════╗${NC}"
-    ifconfig "$store" | grep -E 'inet|netmask|broadcast' | while read -r line; do
-        echo -e "${CYAN}  $line${NC}"
-    done
-    echo -e "${PURPLE}╚══════════════════════════════════════════════════════╝${NC}"
-
-    echo -e "\n${YELLOW}[i] SYSTEM INFO:${NC}"
-    echo -e "${GREEN}  • OS      : ${CYAN}$(uname -s) $(uname -r)${NC}"
-    echo -e "${GREEN}  • Arch    : ${CYAN}$(uname -m)${NC}"
-    echo -e "${GREEN}  • Time    : ${CYAN}$(date)${NC}"
-}
-
-# Run
-check_dependencies
-check_network
-main_menu
-
-## Tool by akazatec
+eval "$(echo 'IyEvYmluL2Jhc2gKCiMjIE5ldFNoaWZ0IC0gSVAgQ2hhbmdlciBUb29sCiMjIE1hZGUgYnkgYWth
+emF0ZWMKCkJBU0VfRElSPSQocmVhbHBhdGggIiQoZGlybmFtZSAiJEJBU0hfU09VUkNFIikiKQoK
+aWYgWyAtdCAxIF07IHRoZW4KICAgIG5jb2xvcnM9JCh0cHV0IGNvbG9ycyAyPi9kZXYvbnVsbCkK
+ICAgIGlmIFsgLW4gIiRuY29sb3JzIiBdICYmIFsgJG5jb2xvcnMgLWdlIDggXTsgdGhlbgogICAg
+ICAgIE5DPSdcMDMzWzBtJwogICAgICAgIENZQU49J1wwMzNbMzg7NTs1MW0nCiAgICAgICAgR1JF
+RU49J1wwMzNbMzg7NTs0Nm0nCiAgICAgICAgUElOSz0nXDAzM1szODs1OzE5OG0nCiAgICAgICAg
+WUVMTE9XPSdcMDMzWzM4OzU7MjI2bScKICAgICAgICBPUkFOR0U9J1wwMzNbMzg7NTsyMDhtJwog
+ICAgICAgIFBVUlBMRT0nXDAzM1szODs1OzE2NW0nCiAgICAgICAgQk9MRD0nXDAzM1sxbScKICAg
+ICAgICBESU09J1wwMzNbMm0nCiAgICAgICAgRkxBU0g9J1wwMzNbNW0nCiAgICAgICAgQkdfQkxB
+Q0s9J1wwMzNbNDBtJwogICAgZWxzZQogICAgICAgIE5DPScnIENZQU49JycgR1JFRU49JycgUElO
+Sz0nJyBZRUxMT1c9JycKICAgICAgICBPUkFOR0U9JycgUFVSUExFPScnIEJPTEQ9JycgRElNPScn
+IEZMQVNIPScnIEJHX0JMQUNLPScnCiAgICBmaQplbHNlCiAgICBOQz0nJyBDWUFOPScnIEdSRUVO
+PScnIFBJTks9JycgWUVMTE9XPScnCiAgICBPUkFOR0U9JycgUFVSUExFPScnIEJPTEQ9JycgRElN
+PScnIEZMQVNIPScnIEJHX0JMQUNLPScnCmZpCgpfX3ZlcnNpb25fXz0xLjAKCmJhbm5lcigpIHsK
+ICAgIGNsZWFyCiAgICBlY2hvIC1lICIke0NZQU59JHtCT0xEfSIKICAgIGVjaG8gIiAg4paI4paI
+4paI4pWXICAg4paI4paI4pWX4paI4paI4paI4paI4paI4paI4paI4pWX4paI4paI4paI4paI4paI
+4paI4paI4paI4pWX4paI4paI4paI4paI4paI4paI4paI4pWX4paI4paI4pWXICAiCiAgICBlY2hv
+ICIgIOKWiOKWiOKWiOKWiOKVlyAg4paI4paI4pWR4paI4paI4pWU4pWQ4pWQ4pWQ4pWQ4pWd4pWa
+4pWQ4pWQ4paI4paI4pWU4pWQ4pWQ4pWd4paI4paI4pWU4pWQ4pWQ4pWQ4pWQ4pWd4paI4paI4pWR
+ICAiCiAgICBlY2hvICIgIOKWiOKWiOKVlOKWiOKWiOKVlyDilojilojilZHilojilojilojiloji
+lojilZcgICAgIOKWiOKWiOKVkSAgIOKWiOKWiOKWiOKWiOKWiOKWiOKWiOKVl+KWiOKWiOKWiOKW
+iOKWiOKWiOKWiOKVkeKWiOKWiOKVkeKWiOKWiOKWiOKWiOKWiOKVlyAgICAiCiAgICBlY2hvICIg
+IOKWiOKWiOKVkeKVmuKWiOKWiOKVl+KWiOKWiOKVkeKWiOKWiOKVlOKVkOKVkOKVnSAgICAg4paI
+4paI4pWRICAgIOKVmuKVkOKVkOKVkOKVkOKWiOKWiOKVkeKWiOKWiOKVlOKVkOKVkOKWiOKWiOKV
+keKWiOKWiOKVkeKWiOKWiOKVlOKVkOKVkOKVnSAgICAiCiAgICBlY2hvICIgIOKWiOKWiOKVkSAg
+4pWa4paI4paI4paI4paI4pWR4paI4paI4paI4paI4paI4paI4paI4pWXICAg4paI4paI4pWRICAg
+4paI4paI4paI4paI4paI4paI4paI4pWR4paI4paI4pWRICDilojilojilZHilojilojilZHiloji
+lojilZEiCiAgICBlY2hvICIgIOKVmuKVkOKVnSAgIOKVmuKVkOKVkOKVkOKVneKVmuKVkOKVkOKV
+kOKVkOKVkOKVkOKVnSAgIOKVmuKVkOKVnSAgIOKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVneKVmuKV
+kOKVneKVmuKVkOKVneKVmuKVkOKVnSIKICAgIGVjaG8gLWUgIiR7TkN9IgogICAgZWNobyAtZSAi
+JHtZRUxMT1d9JHtCT0xEfSAgICAgICAgIOKaoSBMT0NBTCBJUCBNT0RJRklFUiBUT09MIOKaoSR7
+TkN9IgogICAgZWNobyAtZSAiJHtHUkVFTn0ke0JPTER9ICAgICAgICAgICAgICBbIFZFUlNJT04g
+JHtfX3ZlcnNpb25fX30gXSR7TkN9IgogICAgZWNobyAtZSAiJHtQVVJQTEV9ICAgICAgICAgICAg
+ICBbIE1hZGUgYnkgYWthemF0ZWMgXSR7TkN9XG4iCn0KCmxvYWRpbmdfYmFyKCkgewogICAgbG9j
+YWwgbXNnPSQxCiAgICBlY2hvIC1lICJcbiR7Q1lBTn1bPl0gJHtCT0xEfSR7bXNnfSR7TkN9IgogICAgZm9yIGkgaW4gezEuLjIwfTsgZG8KICAgICAgICBiYXJzPSQocHJpbnRmICIlJHtpfXMiIHwgdHIgJyAnICfilognKQogICAgICAgIHNwYWNlcz0kKHByaW50ZiAiJSQoKDIwLWkpKXMiIHwgdHIgJyAnICfilpEnKQogICAgICAgIHBlcmM9JCgoaSAqIDUpKQogICAgICAgIGVjaG8gLW5lICJcciR7UFVSUExFfVske0dSRUVOfSR7YmFyc30ke0NZQU59JHtzcGFjZXN9JHtQVVJQTEV9XSAke1lFTExPV30ke3BlcmN9JSR7TkN9IgogICAgICAgIHNsZWVwIDAuMDUKICAgIGRvbmUKICAgIGVjaG8gLWUgIlxuJHtHUkVFTn0ke0JPTER9W+Kck10gRE9ORSR7TkN9XG4iCn0KCmNoZWNrX2RlcGVuZGVuY2llcygpIHsKICAgIGNsZWFyICYmIGJhbm5lcgogICAgZWNobyAtZSAiJHtDWUFOfVsqXSBDaGVja2luZyBkZXBlbmRlbmNpZXMuLi4ke05DfSIKICAgIGlmICEgY29tbWFuZCAtdiBpZmNvbmZpZyA+IC9kZXYvbnVsbDsgdGhlbgogICAgICAgIGVjaG8gLWUgIiR7UElOS31bIV0gJHtCT0xEfW5ldC10b29scyBub3QgZm91bmQuIEluc3RhbGxpbmcuLi4ke05DfSIKICAgICAgICBpZiBbWyAkKHVuYW1lIC1vKSA9PSAiQW5kcm9pZCIgXV07IHRoZW4KICAgICAgICAgICAgcGtnIGluc3RhbGwgbmV0LXRvb2xzIC15CiAgICAgICAgZWxpZiBjb21tYW5kIC12IGFwdC1nZXQgPiAvZGV2L251bGw7IHRoZW4KICAgICAgICAgICAgc3VkbyBhcHQtZ2V0IGluc3RhbGwgbmV0LXRvb2xzIC15CiAgICAgICAgZmkKICAgIGZpCiAgICBlY2hvIC1lICIke0dSRUVOfVvinJNdICR7Qk9MRH1BbGwgZGVwZW5kZW5jaWVzIHNhdGlzZmllZCEke05DfSIKICAgIHNsZWVwIDEKfQoKY2hlY2tfbmV0d29yaygpIHsKICAgIGJhbm5lcgogICAgbG9hZGluZ19iYXIgIkNIRUNLSU5HIE5FVFdPUksgQ09OTkVDVElPTiIKICAgIHRpbWVvdXQgM3MgY3VybCAtZklzICJodHRwczovL2dpdGh1Yi5jb20iID4gL2Rldi9udWxsCiAgICBpZiBbICQ/IC1lcSAwIF07IHRoZW4KICAgICAgICBlY2hvIC1lICIke0dSRUVOfVsrXSAke0JPTER9TkVUV09SSzogQ09OTkVDVEVEJHtOQ30iCiAgICBlbHNlCiAgICAgICAgZWNobyAtZSAiJHtQSU5LfVshXSAke0JPTER9TkVUV09SSzogT0ZGTElORSBNT0RFJHtOQ30iCiAgICBmaQogICAgc2xlZXAgMQp9CgptYWluX21lbnUoKSB7CiAgICBiYW5uZXIKICAgIGVjaG8gLWUgIiR7UFVSUExFfeKVlOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVlyR7TkN9IgogICAgZWNobyAtZSAiJHtQVVJQTEV94pWRICAke0NZQU59JHtCT0xEfVRPT0wgICA6ICR7R1JFRU59TmV0U2hpZnQgSVAgQ2hhbmdlciR7TkN9JHtQVVJQTEV9ICAgICAgICAgICDilZEke05DfSIKICAgIGVjaG8gLWUgIiR7UFVSUExFfeKVkSAgJHtDWUFOfSR7Qk9MRH1BVVRIT1IgOiAke0dSRUVOfWFrYXphdGVjJHtOQ30ke1BVUlBMRX0gICAgICAgICAgICAgICAgICAgICAg4pWRJHtOQ30iCiAgICBlY2hvIC1lICIke1BVUlBMRX3ilZEgICR7UElOS30ke0JPTER9WyBGT1IgRURVQ0FUSU9OQUwgUFVSUE9TRVMgT05MWSBdJHtOQ30ke1BVUlBMRX0gICAgICAg4pWRJHtOQ30iCiAgICBlY2hvIC1lICIke1BVUlBMRX3ilZrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZ0ke05DfVxuIgoKICAgIHN0b3JlPSIiCgogICAgZWNobyAtZSAiJHtZRUxMT1d9JHtCT0xEfVs+XSBTQ0FOTklORyBORVRXT1JLIElOVEVSRkFDRVMuLi4ke05DfVxuIgogICAgc2xlZXAgMC41CgogICAgY2hlY2tfaWZhY2UoKSB7CiAgICAgICAgaWZhY2U9JDEKICAgICAgICBlY2hvIC1uZSAiJHtDWUFOfVsqXSBDaGVja2luZyAke2lmYWNlfS4uLiR7TkN9IgogICAgICAgIGlmY29uZmlnICIkaWZhY2UiID4gL2Rldi9udWxsIDI+JjEKICAgICAgICBpZiBbICQ/IC1lcSAwIF07IHRoZW4KICAgICAgICAgICAgaXBfYWRkcj0kKGlmY29uZmlnICIkaWZhY2UiIHwgYXdrICcvaW5ldCAvIHtwcmludCAkMn0nKQogICAgICAgICAgICBpZiBbIC1uICIkaXBfYWRkciIgXTsgdGhlbgogICAgICAgICAgICAgICAgZWNobyAtZSAiXHIke0dSRUVOfVvinJNdICR7Qk9MRH0ke2lmYWNlXl59IOKGkiAke1lFTExPV30ke2lwX2FkZHJ9JHtOQ30gICAgICAgICIKICAgICAgICAgICAgICAgIHN0b3JlPSIkaWZhY2UiCiAgICAgICAgICAgIGVsc2UKICAgICAgICAgICAgICAgIGVjaG8gLWUgIlxyJHtPUkFOR0V9WyFdICR7aWZhY2V9IOKAlCBObyBJUHY0IGFzc2lnbmVkJHtOQ30gICAgICAgICIKICAgICAgICAgICAgZmkKICAgICAgICBlbHNlCiAgICAgICAgICAgIGVjaG8gLWUgIlxyJHtESU19W8OXXSAke2lmYWNlfSBub3QgYXZhaWxhYmxlJHtOQ30gICAgICAgICIKICAgICAgICBmaQogICAgfQoKICAgIGNoZWNrX2lmYWNlICJ3bGFuMCIKICAgIHNsZWVwIDAuMgogICAgY2hlY2tfaWZhY2UgImV0aDAiCiAgICBzbGVlcCAwLjIKICAgIGNoZWNrX2lmYWNlICJ3bG8xIgogICAgc2xlZXAgMC4yCiAgICBjaGVja19pZmFjZSAidXNiMCIKICAgIHNsZWVwIDAuMgoKICAgIGlmIFsgLXogIiRzdG9yZSIgXTsgdGhlbgogICAgICAgIGVjaG8gLWUgIlxuJHtQSU5LfSR7Qk9MRH1bIV0gTk8gQUNUSVZFIElOVEVSRkFDRSBGT1VORC4gRVhJVElORy4uLiR7TkN9IgogICAgICAgIGV4aXQgMQogICAgZmkKCiAgICBlY2hvIC1lICJcbiR7Q1lBTn0ke0JPTER9W/CfjJBdIEFDVElWRSBJTlRFUkZBQ0U6ICR7R1JFRU59JHtzdG9yZX0ke05DfVxuIgogICAgZWNobyAtZSAiJHtQVVJQTEV94pSM4pSA4pSAWyR7R1JFRU59YWthemF0ZWMke0NZQU59I+mfJHtHUkVFTn1OZXRTaGlmdCR7UFVSUExFfV0tWyR7UElOS31+JHtQVVJQTEV9XSR7TkN9IgogICAgZWNobyAtbmUgIiR7UFVSUExFfeKUlOKUgCR7R1JFRU59XCQgJHtOQ30iCiAgICByZWFkIC1yIG5ld19pcAoKICAgIGlmIFtbICEgJG5ld19pcCA9fiBeWzAtOV17MSwzfVwuWzAtOV17MSwzfVwuWzAtOV17MSwzfVwuWzAtOV17MSwzfSQgXV07IHRoZW4KICAgICAgICBlY2hvIC1lICIke1BJTkt9WyFdICR7Qk9MRH1JTlZBTElEIElQIEZPUk1BVCEgRXhhbXBsZTogMTkyLjE2OC4xLjEwMCR7TkN9IgogICAgICAgIHNsZWVwIDIKICAgICAgICBtYWluX21lbnUKICAgICAgICByZXR1cm4KICAgIGZpCgogICAgbG9hZGluZ19iYXIgIkFQUExZSU5HIElQIENIQU5HRSIKICAgIHN1ZG8gaWZjb25maWcgJHN0b3JlICRuZXdfaXAKCiAgICBlY2hvIC1lICIke0dSRUVOfSR7Qk9MRH1b4pyTXSBJUCBTVUNDRVNTRlVMTFkgQ0hBTkdFRCEke05DfVxuIgogICAgZWNobyAtZSAiJHtQVVJQTEV94pWU4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWXJHtOQ30iCiAgICBpZmNvbmZpZyAiJHN0b3JlIiB8IGdyZXAgLUUgJ2luZXR8bmV0bWFza3xicm9hZGNhc3QnIHwgd2hpbGUgcmVhZCAtciBsaW5lOyBkbwogICAgICAgIGVjaG8gLWUgIiR7Q1lBTn0gICRsaW5lJHtOQ30iCiAgICBkb25lCiAgICBlY2hvIC1lICIke1BVUlBMRX3ilZrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZ0ke05DfSIKCiAgICBlY2hvIC1lICJcbiR7WUVMTE9XfVtpXSBTWVNURU0gSU5GTzoke05DfSIKICAgIGVjaG8gLWUgIiR7R1JFRU59ICDigKIgT1MgICAgICA6ICR7Q1lBTn0kKHVuYW1lIC1zKSAkKHVuYW1lIC1yKSR7TkN9IgogICAgZWNobyAtZSAiJHtHUkVFTn0gIOKAoiBBcmNoICAgIDogJHtDWUFOfSQodW5hbWUgLW0pJHtOQ30iCiAgICBlY2hvIC1lICIke0dSRUVOfSAg4oCiIFRpbWUgICAgOiAke0NZQU59JChkYXRlKSR7TkN9Igp9CgojIFJ1bgpjaGVja19kZXBlbmRlbmNpZXMKY2hlY2tfbmV0d29yawptYWluX21lbnUKCiMjIFRvb2wgYnkgYWthemF0ZWMK' | base64 -d)"
